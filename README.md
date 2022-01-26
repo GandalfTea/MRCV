@@ -7,8 +7,9 @@ MRCV is an open source library focused on implementing a VR and AR player tracki
 
 &nbsp;
 
+![ezgif-2-ae8c50b6ee](https://user-images.githubusercontent.com/58654842/151255597-4dbf32bd-860d-4687-9841-5757a74ef90f.gif)
 
-![image](https://user-images.githubusercontent.com/58654842/151223353-e183cf0a-3e09-4946-9d4d-06503a0bc71d.png)
+
 
 TODO:
 make it not suck
