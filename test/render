@@ -1,0 +1,1 @@
+g++ frame_test.cc -lopencv_core -lopencv_highgui -lopencv_videoio -lopencv_imgproc -lopencv_features2d
