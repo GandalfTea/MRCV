@@ -11,8 +11,6 @@ namespace MRCV {
 #define FRAME_ROW_STEP FRAME_HEIGHT / 5 
 #define FRAME_COL_STEP FRAME_WIDTH / 5
 
-				// 32 x 48
-
 #define X0 FRAME_WIDTH / 2
 #define Y0 FRAME_HEIGHT / 2
 #define Fx 27
@@ -20,9 +18,7 @@ namespace MRCV {
 #define SENSOR_HEIGHT 4.29f
 #define SENSOR_WIDTH 5.76f
 
-#define MILLIMETERS_TO_PIXELS(F) F * SENSOR_WIDTH / FRAME_WIDTH
-
-
+#define MILLIMETERS_TO_PIXELS(F) (F / SENSOR_WIDTH) * FRAME_WIDTH 
 
 class Frame {
 	public:
@@ -47,7 +43,7 @@ class Frame {
 		cv::Mat K;
 		cv::Mat Kinv;
 		cv::Mat des;
-		cv::Mat pts;
+		std::vector<cv::Mat> pts;
 };
 
 

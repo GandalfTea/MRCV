@@ -37,10 +37,10 @@ int main(int argv, char* argc[]) {
 				circle(show, Point(i.pt), 1, Scalar(0, 255, 0), FILLED, LINE_8);
 			}
 
+			imshow("Frame", show);
+
 			auto stop = std::chrono::system_clock::now();
 			std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop-start).count() << " milliseconds" << std::endl;
-			imshow("Frame", show);
-			//displayOverlay("Frame", to_string(time.count()), 0);
 		}
 
 		char c = (char)waitKey(25);
