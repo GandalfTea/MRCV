@@ -20,11 +20,16 @@ namespace MRCV {
 
 #define MILLIMETERS_TO_PIXELS(F) (F / SENSOR_WIDTH) * FRAME_WIDTH 
 
+typedef enum RunOption {
+	MRCV_DEBUG,
+	MRCV_SILENT,
+};
+
 class Frame {
 	public:
 		Frame() = delete;
 		//Frame(const Frame& frame);
-		Frame(cv::Mat& image, cv::Ptr<cv::ORB>& Extractor);
+		Frame(cv::Mat& image, cv::Ptr<cv::ORB>& Extractor, RunOption = MRCV_SILENT);
 		//~Frame();
 
 		cv::Mat data;

@@ -63,12 +63,12 @@ Frame::Frame(cv::Mat& image, cv::Ptr<cv::ORB>& Extractor)
 				//std::cout << point.t() << std::endl;
 				this->pts.push_back(point.t());
 			}
-
-			// normalize coords
-
-			// continue
 		}
 	}
+
+	this->extractor->compute(this->data, this->kps, this->des);
+
+
 }
 
 }
