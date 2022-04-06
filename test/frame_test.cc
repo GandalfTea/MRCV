@@ -36,13 +36,17 @@ int main(int argv, char* argc[]) {
 			Mat show = frames.back().img1;
 
 			for(KeyPoint i : frames.back().kps1) {
-				circle(show, Point(i.pt), 1, Scalar(0, 255, 0), FILLED, LINE_8);
+				circle(show, Point(i.pt), 2, Scalar(0, 255, 0), 1, LINE_8);
 			}
 
-			imshow("Frame", frames.back().img1);
+			for(size_t i{}; i <= frames.back().kptsTrain.size(); i++) {
+					line(show, frames.back().kptsQuery[i], frames.back().kptsTrain[i], Scalar(0, 0, 255), 0.1, LINE_AA);
+			}
 
 			auto stop = std::chrono::system_clock::now();
 			std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop-start).count() << " milliseconds\n" << std::endl;
+
+			imshow("Frame", frames.back().img1);
 		}
 
 		char c = (char)waitKey(25);

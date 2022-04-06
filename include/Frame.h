@@ -76,6 +76,9 @@ class Frame {
 		std::vector<cv::Mat> pts1;
 		std::vector<cv::Mat> pts2;
 
+		std::vector<cv::DMatch> matches;
+		std::vector<cv::Point2f> kptsTrain, kptsQuery;
+
 		// Helpers
 		cv::Mat getK();
 		cv::Mat getKinv();

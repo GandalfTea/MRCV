@@ -44,11 +44,11 @@ Frame::Frame(cv::Mat& img1, cv::Mat& img2, cv::Ptr<cv::ORB>& Extractor, RunOptio
 	K = cv::Mat(3, 3, CV_32FC1, K_data);
 	Kinv = K.inv();
 
-
 	//pose = cv::Mat::eye(3, 3, CV_32FC1); // why is pose identity
 
-
 	for(int frames = 0; frames <= 1; frames++){
+
+		std::cout << "FRAME INDEX : " << frames << std::endl;
 
 		cv::Mat image;
 		(frames == 0) ? image = this->img1 : image = this->img2;
@@ -93,7 +93,7 @@ Frame::Frame(cv::Mat& img1, cv::Mat& img2, cv::Ptr<cv::ORB>& Extractor, RunOptio
 					cv::Mat point = this->Kinv * normal;
 					(frames == 0) ? this->pts1.push_back(point.t()) : this->pts2.push_back(point.t());
 
-						if(run_option == MRCV_DEBUG) {
+					if(run_option == MRCV_DEBUG) {
 						allPts++;
 						if( point.at<float>(0, 0) > 1.f || point.at<float>(0, 0) < -1.f) wrongPts++;
 						if( point.at<float>(0, 1) > 1.f || point.at<float>(0, 1) < -1.f) wrongPts++;
@@ -106,8 +106,28 @@ Frame::Frame(cv::Mat& img1, cv::Mat& img2, cv::Ptr<cv::ORB>& Extractor, RunOptio
 	}
 
 	// Compute Descriptors
+
 	this->extractor->compute(this->img1, this->kps1, this->des1);
 	this->extractor->compute(this->img2, this->kps2, this->des2);
-}
+
+	std::vector<std::vector<cv::DMatch>> matches;
+	cv::Ptr<cv::DescriptorMatcher> matcher = cv::DescriptorMatcher::create("BruteForce-Hamming");
+
+	matcher->knnMatch(this->des1, this->des2, matches, 2);
+
+	for( auto i : matches) {
+		if( i[0].distance < 0.75*i[1].distance) {
+			if(i[0].distance < 32) {
+				this->matches.push_back(i[0]);
+				this->kptsQuery.push_back( this->kps1[i[0].queryIdx].pt);
+				this->kptsTrain.push_back( this->kps2[i[0].trainIdx].pt);
+			}
+		}
+	}
+
+	if(run_option == MRCV_DEBUG) std::cout << "Matches : " << this->matches.size() << std::endl; 
+
 
 }
+
+} // namespace
