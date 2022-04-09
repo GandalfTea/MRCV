@@ -44,7 +44,7 @@ int main(int argv, char* argc[]) {
 			}
 
 			auto stop = std::chrono::system_clock::now();
-			std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop-start).count() << " milliseconds\n" << std::endl;
+			std::cout << "\t" << std::chrono::duration_cast<std::chrono::milliseconds>(stop-start).count() << " ms\n" << std::endl;
 
 			imshow("Frame", frames.back().img1);
 		}

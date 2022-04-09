@@ -6,6 +6,9 @@
 
 namespace MRCV {
 
+#define RANSAC_MAXITERS 2000
+#define RANSAC_THRESH 3
+
 #define FRAME_WIDTH  1280
 #define FRAME_HEIGHT 720
 #define FRAME_ROW_STEP FRAME_HEIGHT / 5 
@@ -23,7 +26,8 @@ namespace MRCV {
 
 typedef enum {
 	MRCV_DEBUG,
-	MRCV_SILENT
+	MRCV_SILENT,
+	MRCV_VERBOSE
 } RunOption;
 
 
@@ -67,15 +71,13 @@ class Frame {
 		cv::Mat img1;
 		cv::Mat img2;
 		float F;
-		//cv::Mat pose;
+		cv::Mat pose;
+		cv::Mat points;
 		cv::Ptr<cv::ORB>& extractor;
-		std::vector<cv::KeyPoint> kps1;
-		std::vector<cv::KeyPoint> kps2;
-		cv::Mat des1;
-		cv::Mat des2;
-		std::vector<cv::Mat> pts1;
-		std::vector<cv::Mat> pts2;
 
+		std::vector<cv::KeyPoint> kps1, kps2;
+		cv::Mat des1, des2;
+		std::vector<cv::Point2f> pts1, pts2;
 		std::vector<cv::DMatch> matches;
 		std::vector<cv::Point2f> kptsTrain, kptsQuery;
 
