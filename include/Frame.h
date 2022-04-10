@@ -83,12 +83,9 @@ class Frame {
 
 		// Helpers
 		cv::Mat getK();
-		cv::Mat getKinv();
 
 	private:
 		cv::Mat K;
-		cv::Mat Kinv;
-
 		static unsigned mId;
 };
 

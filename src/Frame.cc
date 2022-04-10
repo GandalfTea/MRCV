@@ -20,9 +20,6 @@ Frame::Frame(cv::Mat& img1, cv::Mat& img2, cv::Ptr<cv::ORB>& Extractor, RunOptio
 	cv::Mat resized;
 	try {
 
-		// Check for changing of aspect ration. This is mainly for beginners and should be overwritable
-		//if (FRAME_WIDTH / FRAME_HEIGHT != image.rows / image.cols) throw FrameException( FRAME_RESIZE_INCORRECT_ASPECT_RATIO);
-
 		// Resize and make both frames grayscale
 		cv::resize(img1, resized, cv::Size(FRAME_WIDTH, FRAME_HEIGHT));
 		cv::cvtColor(resized, this->img1, cv::COLOR_RGB2GRAY);
@@ -39,15 +36,28 @@ Frame::Frame(cv::Mat& img1, cv::Mat& img2, cv::Ptr<cv::ORB>& Extractor, RunOptio
 
 	this->F = MILLIMETERS_TO_PIXELS(Fx);
 
+
+	/*
+		Create CAMERA INTRINSICS MATRIX ( K ) from known camera parameters.
+
+		Also create ( Kinv ), the inverse
+		They are used to normalize and denormalize the coords.
+	*/
 	float K_data [9] = { MILLIMETERS_TO_PIXELS(Fx), 0, X0, 
 									  0, MILLIMETERS_TO_PIXELS(Fy), Y0, 
 									  0, 0, 1};
 
 	K = cv::Mat(3, 3, CV_32FC1, K_data);
-	Kinv = K.inv();
 
-	//pose = cv::Mat::eye(3, 3, CV_32FC1); // why is pose identity
+	/*
+		KEYPOINT EXTRACTION
 
+		Using Orb for both extraction and computing descriptors.
+		We split the image into FRAME_COL_STEP x FRAME_ROW_STEP parts for better extraction.
+		This should give us ~2500 - 3000 keypoints per frame.
+		KNNMatch with BFMatcher to match.
+	
+	*/
 	for(int frames = 0; frames <= 1; frames++){
 		cv::Mat image;
 		(frames == 0) ? image = this->img1 : image = this->img2;
@@ -89,7 +99,7 @@ Frame::Frame(cv::Mat& img1, cv::Mat& img2, cv::Ptr<cv::ORB>& Extractor, RunOptio
 					// Normalize the point coordinates
 					float val [3] = { i.pt.x, i.pt.y, 1 };
 					cv::Mat normal( 3, 1, CV_32FC1, val);
-					cv::Mat point = this->Kinv * normal;
+					cv::Mat point = this->K.inv() * normal;
 					cv::Point2f pt (point.at<float>(0, 0), point.at<float>(0, 1));
 					(frames == 0) ? this->pts1.push_back(pt) : this->pts2.push_back(pt);
 
@@ -146,7 +156,7 @@ Frame::Frame(cv::Mat& img1, cv::Mat& img2, cv::Ptr<cv::ORB>& Extractor, RunOptio
 			count++;
 		} 
 	}
-	std::cout << " - " << count << " outliers." << std::endl;
+	if(run_option == MRCV_DEBUG) std::cout << " - " << count << " outliers." << std::endl;
 
 
 	// Compute Pose from E
@@ -167,33 +177,56 @@ Frame::Frame(cv::Mat& img1, cv::Mat& img2, cv::Ptr<cv::ORB>& Extractor, RunOptio
 	cv::Mat R = (U * W.t()) * Vt; 
 	// TODO: If sum of diagonal R < 0, do normal W
 	
-	// t = U[:, 2]
 	cv::Mat t(1, 3, CV_64FC1);
 	for( size_t i = 0; i < U.rows; i++) {
 		t.at<double>(0,i) = U.at<double>(i, 2);
 	}
 
-	cv::Mat Rt(4, 4, CV_64FC1);
-	// fill Rt
+	/* 
+	 	 Extrinsic Camera Parameters
+		 This brings the world coordinates into camera coordinates:
+
+		 Pcamera = Pose * Pworld
+
+		 The translation matrix represents the position of the world origin in relation to the camera-centered coordinates.
+		 To get the camera position relative to the origin, we must calculate C:
+
+		 C = -R.t() * t
+
+		 TODO: Compute C matrix and maybe H 
+	*/
+
+	cv::Mat Rt(3, 4, CV_64FC1);
 	for( size_t i = 0; i <= 2; i++) {
 		for( size_t f = 0; f <= 2; f++) {
 			Rt.at<double>(i, f) = R.at<double>(i, f);
 		}
 	}
 
-	Rt.at<double>(0, 3) = t.at<double>(0, 0);
-	Rt.at<double>(1, 3) = t.at<double>(0, 1);
-	Rt.at<double>(2, 3) = t.at<double>(0, 2);
-
 	for( size_t i = 0; i <= 2; i++) {
 		Rt.at<double>(i, 3) = t.at<double>(0, i);
 	}
 
+	/*
 	for( size_t i = 0; i <= 3; i++) {
 		(i == 3) ? Rt.at<double>(3, i) = 1 : Rt.at<double>(3, i) = 0;
 	}
+*/
+	this->pose = Rt;
 
-	std::cout << "\n\n" << Rt << std::endl;
+
+	// Triangulation ( maybe do this on Map )
+	
+	cv::Mat Knew;
+	this->K.convertTo(Knew, CV_64FC1);
+	cv::Mat wat = Knew * Rt;
+
+	cv::Mat pts4d(1, this->kptsQuery.size(), CV_64FC4);
+
+	cv::triangulatePoints( wat, wat, this->kptsQuery, this->kptsTrain, pts4d);
+
+	std::cout << pts4d << std::endl;
+
 }
 
 
