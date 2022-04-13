@@ -14,6 +14,9 @@ class Map {
 
 		// Update the map if there are any new points 
 		void update( const Frame& frame );
+		void clear();
+		void draw();
+		void video();
 
 	private:
 		std::vector<Frame> frames;

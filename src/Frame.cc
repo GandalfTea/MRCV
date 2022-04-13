@@ -6,6 +6,8 @@
 namespace MRCV
 {
 
+unsigned Frame::mId = 0;
+
 /*
 Frame::Frame(const Frame& frame)
 				: data(frame.data), F(frame.F), K(frame.getK()), Kinv(frame.getKinv()),
@@ -14,83 +16,93 @@ Frame::Frame(const Frame& frame)
 */
 
 
-Frame::Frame(cv::Mat& img1, cv::Mat& img2, cv::Ptr<cv::ORB>& Extractor, RunOption run_option)
-				: extractor(Extractor)
-{
-	cv::Mat resized;
-	try {
 
-		// Resize and make both frames grayscale
+
+Frame::Frame(cv::Mat& img1, cv::Mat& img2, cv::Ptr<cv::ORB>& Extractor, RunOption run_option)
+				: extractor(Extractor), id(mId++)
+{
+
+	std::vector<cv::Point2f> pts1, pts2;
+	cv::Mat des1, des2;
+
+
+
+/*  Resize image into FRAME_WIDTH X FRAME_HEIGHT
+		Change color into GRAYSCALE.
+		Change color of 'show' image back into RGB        */
+
+	try {
+		cv::Mat resized;
 		cv::resize(img1, resized, cv::Size(FRAME_WIDTH, FRAME_HEIGHT));
 		cv::cvtColor(resized, this->img1, cv::COLOR_RGB2GRAY);
-
 		cv::resize(img2, resized, cv::Size(FRAME_WIDTH, FRAME_HEIGHT));
 		cv::cvtColor(resized, this->img2, cv::COLOR_RGB2GRAY);
 
-	} catch( cv::Exception& e) {
+		cv::cvtColor(this->img1, this->show, cv::COLOR_GRAY2RGB);
 
-		const char* msg = e.what();
-		std::cout << "OpenCV Exception : " << msg << std::endl;
+	} catch( cv::Exception& e) {
+		std::cout << "OpenCV Exception : " << (const char*)e.what() << std::endl;
 		throw FrameException( FRAME_GRAYSCALE_CONVERSION_FAIL);
 	}
 
-	this->F = MILLIMETERS_TO_PIXELS(Fx);
 
 
-	/*
-		Create CAMERA INTRINSICS MATRIX ( K ) from known camera parameters.
+/*  Create CAMERA INTRINSICS MATRIX ( K )
+		Also create the inverse         ( Kinv )
+    Use: They are used to normalize and denormalize the coords.    */
 
-		Also create ( Kinv ), the inverse
-		They are used to normalize and denormalize the coords.
-	*/
-	float K_data [9] = { MILLIMETERS_TO_PIXELS(Fx), 0, X0, 
-									  0, MILLIMETERS_TO_PIXELS(Fy), Y0, 
-									  0, 0, 1};
-
+	this->F = Fx;
+	float K_data [9] = { Fx, 0, X0, 
+	                     0, Fy, Y0, 
+                       0,  0, 1  };
 	K = cv::Mat(3, 3, CV_32FC1, K_data);
 
-	/*
-		KEYPOINT EXTRACTION
 
+
+/*  KEYPOINT EXTRACTION
 		Using Orb for both extraction and computing descriptors.
 		We split the image into FRAME_COL_STEP x FRAME_ROW_STEP parts for better extraction.
 		This should give us ~2500 - 3000 keypoints per frame.
-		KNNMatch with BFMatcher to match.
-	
-	*/
-	for(int frames = 0; frames <= 1; frames++){
+		KNNMatch with BFMatcher to match.                  */
+
+	for( int frames = 0; frames <= 1; frames++ ) {
 		cv::Mat image;
+		int allPts = 0, wrongPts = 0; // only use when debug
 		(frames == 0) ? image = this->img1 : image = this->img2;
 
-		int allPts = 0, wrongPts = 0;
-
-		// Split image for better keypoint extraction
 		for(size_t rw = 0; rw < FRAME_WIDTH; rw += FRAME_COL_STEP) {
 			for(size_t rh = 0; rh < FRAME_HEIGHT; rh += FRAME_ROW_STEP) {
+
+				// Draw subimage borders
+				cv::line (show, cv::Point(0, rh), 
+												cv::Point(FRAME_WIDTH, rh), 
+									 			cv::Scalar(0, 0, 0), 0);
+				cv::line (show, cv::Point(rw, 0), 
+												cv::Point(rw, FRAME_HEIGHT), 
+									 			cv::Scalar(0, 0, 0), 0);
 
 				// Create Subimage matrix
 				cv::Mat subimage ( FRAME_ROW_STEP, FRAME_COL_STEP, CV_8UC1 );
 				for(size_t i = 0; i < FRAME_ROW_STEP; i++) {
 					for(size_t f = 0; f < FRAME_COL_STEP; f++) {
+
 						try {
 							subimage.at<unsigned char>(i,f) = image.at<unsigned char>(rh + i, rw + f);
-	
+
 						} catch(cv::Exception& e) {
-	
-							const char* msg = e.what();
-							std::cout << "OpenCV Exception : " << msg << std::endl;
-	
-							// check for index out of range, channel and size errors
+							std::cout << "OpenCV Exception : " << (const char*)e.what() << std::endl;
+							// TODO: check for index out of range, channel and size errors
 							throw FrameException(FRAME_SUBSAMPELING_CONVOLUTION_OUT_OF_RANGE);	
 						}
 					}
 				}
 
+				// Extract Keypoints
 				std::vector<cv::KeyPoint> ukps{};
 				this->extractor->detect(subimage, ukps);
 	
 				for( auto i : ukps ) {
-	
+
 					// Recalibrate the keypoint coordinates for the big image
 					i.pt.x += rw;
 					i.pt.y += rh;
@@ -101,70 +113,72 @@ Frame::Frame(cv::Mat& img1, cv::Mat& img2, cv::Ptr<cv::ORB>& Extractor, RunOptio
 					cv::Mat normal( 3, 1, CV_32FC1, val);
 					cv::Mat point = this->K.inv() * normal;
 					cv::Point2f pt (point.at<float>(0, 0), point.at<float>(0, 1));
-					(frames == 0) ? this->pts1.push_back(pt) : this->pts2.push_back(pt);
+					(frames == 0) ? pts1.push_back(pt) : pts2.push_back(pt);
 
 					if(run_option == MRCV_DEBUG) {
 						allPts++;
 						if( point.at<float>(0, 0) > 1.f || point.at<float>(0, 0) < -1.f) wrongPts++;
 						if( point.at<float>(0, 1) > 1.f || point.at<float>(0, 1) < -1.f) wrongPts++;
 					}
-	
+
 				}
 			}
 		}
+
 		if(run_option == MRCV_DEBUG) std::cout << "Frame " << frames  << "  -> " << allPts << " : " << wrongPts << std::endl;
 	}
 
+
 	// Compute Descriptors
+	this->extractor->compute(this->img1, this->kps1, des1);
+	this->extractor->compute(this->img2, this->kps2, des2);
 
-	this->extractor->compute(this->img1, this->kps1, this->des1);
-	this->extractor->compute(this->img2, this->kps2, this->des2);
 
-	// Match Keypoints
 
+	// Keypoint Matching 
 	std::vector<std::vector<cv::DMatch>> matches;
 	cv::Ptr<cv::DescriptorMatcher> matcher = cv::DescriptorMatcher::create("BruteForce-Hamming");
-
-	matcher->knnMatch(this->des1, this->des2, matches, 2);
-
+	matcher->knnMatch(des1, des2, matches, 2);
 
 	// Filter Matches and save point coordinates
 	for( auto i : matches) {
 		if( i[0].distance < 0.75*i[1].distance) {
 			if(i[0].distance < 32) {
 				this->matches.push_back(i[0]);
-				this->kptsQuery.push_back( this->pts1[i[0].queryIdx]);
-				this->kptsTrain.push_back( this->pts2[i[0].trainIdx]);
+				this->kptsQuery.push_back( pts1[i[0].queryIdx]);
+				this->kptsTrain.push_back( pts2[i[0].trainIdx]);
 			}
 		}
 	}
 
 	if(run_option == MRCV_DEBUG) std::cout << "Matches  -> " << this->matches.size(); 
 
+
+
 	// Compute Essential E matrix and inliners 
 	// CAN USE recoverPose() here to skip the singular value decomposition on the essential matrix. It also returns the inliers
 	cv::Mat Mask;
-	cv::Mat E = cv::findEssentialMat( this->kptsQuery, this->kptsTrain, this->getK(), cv::RANSAC, 0.999, RANSAC_THRESH, Mask);
-
+	cv::Mat E = cv::findEssentialMat( this->kptsQuery, this->kptsTrain, this->K, cv::RANSAC, 0.999, RANSAC_THRESH, Mask);
 
 	// Filter the inliers from the big keypoint lists
 	int count = 0;
-	for( size_t maskRow = 0; maskRow <= this->kptsQuery.size(); maskRow++) {
+	for( size_t maskRow = 0; maskRow <= kptsQuery.size(); maskRow++) {
 		if(!(unsigned int)Mask.at<unsigned char>(maskRow)) {	
 			this->kptsQuery.erase( this->kptsQuery.begin() + maskRow );
 			this->kptsTrain.erase( this->kptsTrain.begin() + maskRow );
 			count++;
 		} 
 	}
+
 	if(run_option == MRCV_DEBUG) std::cout << " - " << count << " outliers." << std::endl;
 
 
 	// Compute Pose from E
-	
+
 	//W^-1 = W.t()
 	float W_data[] = { 0,-1, 0,
-	                   1, 0, 0,
-	                   0, 0, 1};
+		        				 1, 0, 0,
+				        		 0, 0, 1};
 
 	cv::Mat W(3, 3, CV_64FC1, W_data);
 	cv::Mat S, U, Vt, E_hat, err;
@@ -173,66 +187,56 @@ Frame::Frame(cv::Mat& img1, cv::Mat& img2, cv::Ptr<cv::ORB>& Extractor, RunOptio
 	// TODO: Asserts fail
 	//assert(cv::determinant(U) > 0);
 	//assert(cv::determinant(Vt) < 0);
-	
+
 	cv::Mat R = (U * W.t()) * Vt; 
 	// TODO: If sum of diagonal R < 0, do normal W
-	
+
 	cv::Mat t(1, 3, CV_64FC1);
 	for( size_t i = 0; i < U.rows; i++) {
 		t.at<double>(0,i) = U.at<double>(i, 2);
 	}
 
-	/* 
-	 	 Extrinsic Camera Parameters
-		 This brings the world coordinates into camera coordinates:
 
-		 Pcamera = Pose * Pworld
 
-		 The translation matrix represents the position of the world origin in relation to the camera-centered coordinates.
-		 To get the camera position relative to the origin, we must calculate C:
+/* Extrinsic Camera Parameters
+	 This brings the world coordinates into camera coordinates:
+	 Pcamera = Pose * Pworld
 
-		 C = -R.t() * t
+	 The translation matrix represents the position of the world origin in relation to the camera-centered coordinates.
+	 To get the camera position relative to the origin, we must calculate C:
+	 C = -R.t() * t
 
-		 TODO: Compute C matrix and maybe H 
-	*/
+	 TODO: Compute C matrix and maybe H 					*/
 
 	cv::Mat Rt(3, 4, CV_64FC1);
-	for( size_t i = 0; i <= 2; i++) {
-		for( size_t f = 0; f <= 2; f++) {
-			Rt.at<double>(i, f) = R.at<double>(i, f);
+		for( size_t i = 0; i <= 2; i++) {
+			for( size_t f = 0; f <= 2; f++) {
+				Rt.at<double>(i, f) = R.at<double>(i, f);
+			}
 		}
-	}
 
-	for( size_t i = 0; i <= 2; i++) {
-		Rt.at<double>(i, 3) = t.at<double>(0, i);
-	}
+		for( size_t i = 0; i <= 2; i++) {
+			Rt.at<double>(i, 3) = t.at<double>(0, i);
+		}
 
-	/*
-	for( size_t i = 0; i <= 3; i++) {
-		(i == 3) ? Rt.at<double>(3, i) = 1 : Rt.at<double>(3, i) = 0;
-	}
-*/
-	this->pose = Rt;
-
-
-	// Triangulation ( maybe do this on Map )
+		/*
+		for( size_t i = 0; i <= 3; i++) {
+			(i == 3) ? Rt.at<double>(3, i) = 1 : Rt.at<double>(3, i) = 0;
+		}
+	  */
+		this->pose = Rt;
 	
-	cv::Mat Knew;
-	this->K.convertTo(Knew, CV_64FC1);
-	cv::Mat wat = Knew * Rt;
+		// Triangulation 
+		cv::Mat Knew;
+		this->K.convertTo(Knew, CV_64FC1);
+		cv::Mat wat = Knew * Rt;
+	
+		cv::Mat pts4d(1, this->kptsQuery.size(), CV_64FC4);
+	
+		cv::triangulatePoints( wat, wat, this->kptsQuery, this->kptsTrain, pts4d);
+	
+		//std::cout << pts4d << std::endl;
+	}
 
-	cv::Mat pts4d(1, this->kptsQuery.size(), CV_64FC4);
-
-	cv::triangulatePoints( wat, wat, this->kptsQuery, this->kptsTrain, pts4d);
-
-	std::cout << pts4d << std::endl;
-
-}
-
-
-
-cv::Mat Frame::getK() {
-	return this->K;
-}
 
 } // namespace
