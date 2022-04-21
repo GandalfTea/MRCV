@@ -10,7 +10,28 @@ MRCV is an open-source computer vision library that abstracts the [SLAM](https:/
 
 ![ezgif-2-ae8c50b6ee](https://user-images.githubusercontent.com/58654842/151255597-4dbf32bd-860d-4687-9841-5757a74ef90f.gif)
 
+&nbsp;
 
+#### Dependencies
+* OpenCV
+* OpenGL
+* Pangolin
+* matplotlibcpp
+
+&nbsp;
+
+#### Build
+```
+$ mkdir build && cd build
+$ cmake ..
+$ cmake --build .
+```
+&nbsp;
+
+#### Usage
+```
+$ MRCV [source video]
+```
 
 TODO:
 make it not suck     
