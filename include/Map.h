@@ -3,8 +3,26 @@
 #define MRCV_MAP_H
 
 #include <Frame.h>
+#include <Kalman.h>
 
 namespace MRCV {
+
+
+typedef unsigned char uchar;
+
+
+
+struct Observation {
+	cv::Point2f pt;
+};
+
+
+struct Point {
+	cv::Point2f pt;
+	uchar des;
+	std::vector<Observation> observations;
+};
+
 
 
 class Map {
@@ -12,16 +30,15 @@ class Map {
 		Map();
 		~Map();
 
-		// Update the map if there are any new points 
 		void update( const Frame& frame );
 		void clear();
 		void draw();
 		void video();
 
 	private:
-		std::vector<Frame> frames;
-		cv::Mat points;
-}
+		std::vector<Point> points;
+		std::vector<cv::Mat> poses;
+};
 
 
 

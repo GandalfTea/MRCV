@@ -172,8 +172,20 @@ Frame::Frame(cv::Mat& img1, cv::Mat& img2, cv::Ptr<cv::ORB>& Extractor, RunOptio
 
 	if(run_option == MRCV_DEBUG) std::cout << " - " << count << " outliers." << std::endl;
 
+	
 
-	// Compute Pose from E
+
+	// Use OpenCV helpers to comput Rt 
+	cv::Mat opencv_R, opencv_t, opencv_inliers;
+	cv::recoverPose( E, this->kptsQuery, this->kptsTrain, this->K, opencv_R, opencv_t, opencv_inliers);
+	this->R = opencv_R;
+	this->t = opencv_t;
+
+
+
+
+	// Manualy Compute Pose from E
+  /*
 
 	//W^-1 = W.t()
 	float W_data[] = { 0,-1, 0,
@@ -184,17 +196,40 @@ Frame::Frame(cv::Mat& img1, cv::Mat& img2, cv::Ptr<cv::ORB>& Extractor, RunOptio
 	cv::Mat S, U, Vt, E_hat, err;
 
 	cv::SVDecomp( E, S, U, Vt, cv::SVD::FULL_UV);
-	// TODO: Asserts fail
-	//assert(cv::determinant(U) > 0);
-	//assert(cv::determinant(Vt) < 0);
 
-	cv::Mat R = (U * W.t()) * Vt; 
-	// TODO: If sum of diagonal R < 0, do normal W
+	if(cv::determinant(U) > 0)   U.col(2) *= -1;
+	if(cv::determinant(Vt) < 0) Vt.row(2) *= -1;
+
+	cv::Mat R = U * W * Vt; 
+	
+	// R sum of diagonal > 0
+	float sum = 0.0f;
+	for(size_t i = 0; i < R.cols; i++) {
+		sum += R.at<float>(i,i);
+	}
+
+	cv::Mat rvec;
+	cv::Rodrigues(R, rvec);
+
+	if (sum < 0) {
+		R = U * W.t() * Vt;
+	}
+
 
 	cv::Mat t(1, 3, CV_64FC1);
-	for( size_t i = 0; i < U.rows; i++) {
-		t.at<double>(0,i) = U.at<double>(i, 2);
-	}
+//	for( size_t i = 0; i < U.rows; i++) {
+//		t.at<double>(0,i) = U.at<double>(i, 2);
+//	}
+
+	cv::Mat tskew = U*W*U.t();
+	double tvalues [] = { tskew.at<double>(2,1), tskew.at<double>(0,2), tskew.at<double>(1,0)};
+	cv::Mat ts2(1, 3, CV_64FC1, tvalues);
+	t.at<double>(0,0) = tskew.at<double>(2,1);
+	t.at<double>(0,1) = tskew.at<double>(0,2);
+	t.at<double>(0,2) = tskew.at<double>(1,0);
+	*/
+
+
 
 
 
@@ -209,15 +244,19 @@ Frame::Frame(cv::Mat& img1, cv::Mat& img2, cv::Ptr<cv::ORB>& Extractor, RunOptio
 	 TODO: Compute C matrix and maybe H 					*/
 
 	cv::Mat Rt(3, 4, CV_64FC1);
-		for( size_t i = 0; i <= 2; i++) {
-			for( size_t f = 0; f <= 2; f++) {
-				Rt.at<double>(i, f) = R.at<double>(i, f);
-			}
+	for( size_t i = 0; i <= 2; i++) {
+		for( size_t f = 0; f <= 2; f++) {
+			Rt.at<double>(i, f) = opencv_R.at<double>(i, f);
 		}
+	}
 
-		for( size_t i = 0; i <= 2; i++) {
-			Rt.at<double>(i, 3) = t.at<double>(0, i);
-		}
+	for( size_t i = 0; i <= 2; i++) {
+		Rt.at<double>(i, 3) = opencv_t.at<double>(0, i);
+	}
+
+	//std::cout << Rt << std::endl << std::endl;
+	//std::cout << R << std::endl << std::endl;
+	//std::cout << t << std::endl << std::endl;
 
 		/*
 		for( size_t i = 0; i <= 3; i++) {
@@ -225,7 +264,7 @@ Frame::Frame(cv::Mat& img1, cv::Mat& img2, cv::Ptr<cv::ORB>& Extractor, RunOptio
 		}
 	  */
 		this->pose = Rt;
-	
+
 		// Triangulation 
 		cv::Mat Knew;
 		this->K.convertTo(Knew, CV_64FC1);
@@ -234,6 +273,17 @@ Frame::Frame(cv::Mat& img1, cv::Mat& img2, cv::Ptr<cv::ORB>& Extractor, RunOptio
 		cv::Mat pts4d(1, this->kptsQuery.size(), CV_64FC4);
 	
 		cv::triangulatePoints( wat, wat, this->kptsQuery, this->kptsTrain, pts4d);
+
+			/*
+		for( size_t i = 0; i < pts4d.cols; i++) {
+			pts4d.at<float>(i, 0) /= pts4d.at<float>(i, 3);
+			pts4d.at<float>(i, 1) /= pts4d.at<float>(i, 3);
+			pts4d.at<float>(i, 2) /= pts4d.at<float>(i, 3);
+			pts4d.at<float>(i, 3) /= pts4d.at<float>(i, 3);
+		}
+			*/
+		pts4d = 1 * pts4d;
+		this->points = pts4d;
 	
 		//std::cout << pts4d << std::endl;
 	}

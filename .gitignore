@@ -1,6 +1,8 @@
 
+build
 data
-a.out
+test/compile
+test/render
 
 # Swap
 [._]*.s[a-v][a-z]

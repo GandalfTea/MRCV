@@ -6,7 +6,7 @@
 
 namespace MRCV {
 
-#define FRAME_WIDTH  1280
+#define FRAME_WIDTH 1280
 #define FRAME_HEIGHT 720
 
 #define FRAME_ROW_STEP FRAME_HEIGHT / 5 
@@ -89,6 +89,8 @@ class Frame {
 
 		// Extrinsic Camera Parameters
 		cv::Mat pose;
+		cv::Mat R;
+		cv::Mat t;
 
 		// Triangulated 4D Points
 		cv::Mat points;
