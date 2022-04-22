@@ -16,43 +16,6 @@ namespace pangolin {
 						: Handler3D(cam_state, enforce_up, trans_scale, zoom_fraction) {};
 
 
-		void Mouse( View& display, MouseButton button, int x, int y, bool pressed, int button_state) {
-
-			// Implement mouse movement + scroll
-
-			std::cout << "MOUSE CALLED" << std::endl;
-			
-			last_pos[0] = (float)x;
-			last_pos[1] = (float)y;
-
-			std::cout << last_pos[0] << " , " << last_pos[2] << std::endl;
-
-			double T_nc[3*4];
-			LieSetIdentity(T_nc);	// create float array of 16 that is filled with an idetity matrix
-
-			funcKeyState = 0;
-
-			if( pressed ) {
-
-				GetPosNormal(display, x, y, p, Pw, Pc, n, last_z);
-
-				if( ValidWinDepth(p[2]) )	{
-					last_z = p[2];
-					std::copy(Pc, Pc+3, rot_center);
-				}
-
-				if( button == MouseButtonLeft ) {
-					std::cout << "Left Mouse Button Clicked" << std::endl;
-					// catch release
-					// calculate Rt
-					// Apply to camera
-				}
-				funcKeyState = button_state;
-			}
-		}
-
-
-
 	void MouseMotion( View& display, int x, int y, int button_state ) {
 		const double rf = 0.01;
 		const float delta[2] = { (float)x - last_pos[0], (float)y - last_pos[1] };
@@ -141,10 +104,13 @@ namespace pangolin {
 				MatMul<3,1>(mrotc, rot_center, (double)-1.0);
 				LieApplySO3<>(T_2c + (3*3), T_2c, mrotc);
 				double T_n2[3*4];
-				LieSetIdentity(T_n2);
+				LieSetIdentity<>(T_n2);
 				LieSetTranslation<>(T_n2, rot_center);
 				LieMulSE3(T_nc, T_n2, T_2c);
 				rotation_changed = true;
+
+				std::cout << cam_state->GetModelViewMatrix() << std::endl;
+
 			}
 
 			LieMul4x4bySE3<>(mv.m, T_nc, mv.m);
