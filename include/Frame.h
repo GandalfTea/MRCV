@@ -63,25 +63,42 @@ class FrameAlert {
 };
 
 
+/* This struct holds an individual frame
+ * in order to not process the same frame twice. 
+ * TODO: Rename*/
+struct frame {
+	cv::Mat img;
+	std::vector<cv::KeyPoint> kps;
+	cv::Mat des;
+	std::vector<cv::Point2f> pts;
+	cv::Mat pose;
+	unsigned int imgId;
+};
+
+/*
+ * The main Frame class holds the triangulated 3D frame computed from 2 video frames
+ */
 class Frame {
 	public:
 		Frame() = delete;
 		//Frame(const Frame& frame);
+		Frame(frame& frame1, frame& frame2, cv::Ptr<cv::ORB>& Extractor, RunOption run_option = MRCV_SILENT);
 		Frame(cv::Mat& img1, cv::Mat& img2, cv::Ptr<cv::ORB>& Extractor, RunOption run_option = MRCV_SILENT);
 		Frame(cv::Mat& img1, cv::Mat& img2, cv::Mat& img3, cv::Ptr<cv::ORB>& Extractor, RunOption run_option = MRCV_SILENT);
 		Frame(cv::Mat& img1, cv::Mat& img2, cv::Mat& img3, cv::Mat& img4, cv::Ptr<cv::ORB>& Extractor, RunOption run_option = MRCV_SILENT);
 		//~Frame();
+		
+		// Internal
+		void extract( frame& current );
 
 		unsigned id;
-		cv::Mat img1;
-		cv::Mat img2;
+		frame f1, f2;
 		cv::Mat show; // image that is shown in debug screen 
 		cv::Ptr<cv::ORB>& extractor; // TODO: make general extractor pointer
 
-		// Stored for debug view
-		std::vector<cv::KeyPoint> kps1, kps2;
 		std::vector<cv::DMatch> matches;
 		std::vector<cv::Point2f> kptsTrain, kptsQuery;
+		cv::Mat desTrain;
 
 		// Intrinsic Camera Parameters
 		float F;

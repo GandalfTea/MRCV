@@ -17,6 +17,7 @@
 
 #include "../include/Frame.h"
 #include "../include/MovementHandler.h"
+#include "../include/Map.h"
 
 using namespace std;
 using namespace cv;
@@ -34,24 +35,24 @@ int main(int argv, char* argc[]) {
 	pangolin::CreateWindowAndBind("SLAM", 1000, 1000);
 	glEnable(GL_DEPTH_TEST);
 	pangolin::OpenGlRenderState s_cam (
-		pangolin::ProjectionMatrix( 1000, 1000, 800, 800, 320, 249, 0.1, 10000),
-		pangolin::ModelViewLookAt(-0, 0.5, 5.0, 0,0,0, 0,1,0)		
+		pangolin::ProjectionMatrix( 1000, 1000, 600, 600, 320, 249, 0.1, 10000),
+		pangolin::ModelViewLookAt(0,0, -5.0, 0,0,0, 0,1,0)		
 	);
 
 	pangolin::MovementHandler handler(s_cam);
 
 	pangolin::View& d_cam = pangolin::CreateDisplay()
-					.SetBounds(0.0, 1.0, 1.0, 1000.0f/1000.0f)
+					.SetBounds(0.0, 1.0, 0.0, 1.0, -1000.0f/1000.0f)
 					.SetHandler( &handler );
-
-	pangolin::ToggleConsole();
 
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
 	vector<cv::Mat> images;
+	vector<frame> f;
 	vector<Frame> frames;
 	vector<Mat> poses;
+	vector<cv::Point3f> points;
 
 	vector<double> x_displacement;
 	vector<double> y_displacement;
@@ -59,25 +60,39 @@ int main(int argv, char* argc[]) {
 
 	float camera_rotation = 0.f;
 
+	Map Map;
+
 	while( !pangolin::ShouldQuit() ) {
-		//auto start = std::chrono::system_clock::now();
-		Mat frame;
-		cap >> frame;
-		if (frame.empty())
+		auto start = std::chrono::system_clock::now();
+		Mat f;
+		cap >> f;
+		if (f.empty())
 			break;
+
+		images.push_back(f);
 
 		Ptr<ORB> extractor = ORB::create(200, 1.2f, 8, 5, 0, 2, cv::ORB::HARRIS_SCORE, 40, 20);
 
-		images.push_back(frame);
+		if( images.size() >= 2) {
+			frame f1;
+			frame f2;
+			if(images.size() == 2) {
+				f1.img = images.rbegin()[1];
+			} else {
+				f1 = frames.back().f2;
+			}
+			f2.img = images.rbegin()[0];
 
-		if( images.size() > 2) {
-			frames.push_back(Frame(images.rbegin()[0], images.rbegin()[1], extractor, MRCV_SILENT));
-			poses.push_back(frames.back().pose);
+			frames.push_back(Frame(f1, f2, extractor, MRCV_SILENT));
+			//poses.push_back(frames.back().pose);
 
 			//Mat show = frames.back().show;
 
-			//auto stop = std::chrono::system_clock::now();
-			//std::cout << "\t" << std::chrono::duration_cast<std::chrono::milliseconds>(stop-start).count() << " ms\n" << std::endl;
+			auto stop = std::chrono::system_clock::now();
+			std::cout << "\t" << std::chrono::duration_cast<std::chrono::milliseconds>(stop-start).count() << " ms\n" << std::endl;
+
+			Map.update( frames.back().points, frames.back().desTrain );
+			std::cout << "MAP SIZE : " << Map.size() << std::endl;
 
 			/*
 			for(size_t i{}; i <= frames.back().kptsTrain.size(); i++) {
@@ -105,33 +120,43 @@ int main(int argv, char* argc[]) {
 			*/
 
 			// Render Points
+			
+			d_cam.Activate(s_cam);
+			glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		
 
 			for( size_t i = 0; i <= frames.back().points.cols; i++) {
-				glEnable(GL_POINT_SMOOTH);
-				glPointSize(1);
-				glColor3d(1.0, 1.0, 1.0);
-
-				glBegin(GL_POINTS);
 				float x = frames.back().points.at<float>(i, 0) * 10; 
 				float y = frames.back().points.at<float>(i, 1) * 10; 
 				float z = frames.back().points.at<float>(i, 2) * 10; 
-				glVertex3d(x, y, x); 
+				points.push_back(cv::Point3f(x, y, z));
+			}
+
+			for( auto i : points) {
+				glEnable(GL_POINT_SMOOTH);
+				glPointSize(1);
+				glColor3d(1.0, 1.0, 1.0);
+				glBegin(GL_POINTS);
+				glVertex3d(i.x, i.y, i.z); 
 				glEnd();
 			}
-			//imshow("Frame", show);
+
 			
 
-			// Process poses
+			// Show camera pose 
 
-			glEnable(GL_POINT_SMOOTH);
-			glPointSize(5);
-			glColor3d(0, 1.0, 0);
-			glBegin(GL_POINTS);
-			float x = frames.back().t.at<double>(0, 1) * 1 ; 
-			float y = frames.back().t.at<double>(0, 2) * 1 ; 
-			float z = frames.back().t.at<double>(0, 3) * 1 ; 
-			glVertex3d(x, y, z); 
-			glEnd();
+			for( auto i : poses ) {
+				glEnable(GL_POINT_SMOOTH);
+				glPointSize(5);
+				glColor3d(0, 1.0, 0);
+				glBegin(GL_POINTS);
+				float x = i.at<double>(3, 0) * 10 ; 
+				float y = i.at<double>(3, 1) * 10 ; 
+				float z = i.at<double>(3, 2) * 10 ; 
+				glVertex3d(x, y, z); 
+				glEnd();
+			
+			}
 
 
 			// Calculate displacement
@@ -154,13 +179,7 @@ int main(int argv, char* argc[]) {
 				cv::Rodrigues( R1toR2, R_disp );
 				cv::Mat t_disp = -R1toR2 * t1 + t2; 
 
-				//std::cout << R_disp << std::endl << std::endl;
-				//std::cout << t_disp << std::endl << std::endl;
-
-				x_displacement.push_back(R1.at<double>(0,0));
-				y_displacement.push_back(R1.at<double>(0,1));
-				z_displacement.push_back(R1.at<double>(0,2));
-
+				/*
 				std::cout.precision(50);
 				std::cout << std::endl;
 				for( size_t i = 0; i <= R_disp.cols+1; i ++) {
@@ -170,6 +189,7 @@ int main(int argv, char* argc[]) {
 				for( size_t i = 0; i <= t_disp.cols+1; i ++) {
 					std::cout << std::fixed << t_disp.at<double>(0, i) << std::endl;
 				}
+				*/
 			}
 
 
@@ -185,7 +205,14 @@ int main(int argv, char* argc[]) {
 			};
 
 			auto RT = pangolin::OpenGlMatrix(NewRt);
-			s_cam.Follow(RT);
+			//auto iRt = RT.Inverse();
+			//const pangolin::OpenGlMatrix T_vc = s_cam.GetModelViewMatrix() * iRt;
+			//s_cam.SetModelViewMatrix(T_vc);
+			//pangolin::OpenGlMatrix& cam = s_cam.GetModelViewMatrix();
+			//std::cout << cam << std::endl;
+			//s_cam.Follow(RT, true);
+			
+			//imshow("Frame", show);
 
 		}
 		pangolin::FinishFrame();
