@@ -11,22 +11,6 @@ namespace MRCV {
 
 typedef unsigned char uchar;
 
-
-struct Observation {
-	cv::Point2f pt;
-};
-
-
-struct Point {
-	cv::Point3f pt;
-	cv::Mat des;
-	std::vector<Observation> observations;
-
-	cv::Point3f global( Point& a) {
-		// express point in global frame
-	}
-};
-
 #if defined MRCV_POWER_SAVING || defined MRCV_SPEEDY
 	#define MAP_MAX_SIZE 100000 * sizeof(Point)*4
 #elif defined MRCV_DETAILED
@@ -47,9 +31,13 @@ class Map {
 		void video();
 
 		// Helpers
-		bool contains( uchar a );
+		bool contains( cv::Mat des );
 		void add( Point a );
 		int size();
+
+		int mPointsFound = 0;
+		cv::Ptr<cv::DescriptorMatcher> matcher; 
+		cv::Mat des;
 
 	private:
 

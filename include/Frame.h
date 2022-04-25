@@ -92,6 +92,7 @@ class Frame {
 		void extract( frame& current );
 
 		unsigned id;
+		unsigned double time;
 		frame f1, f2;
 		cv::Mat show; // image that is shown in debug screen 
 		cv::Ptr<cv::ORB>& extractor; // TODO: make general extractor pointer

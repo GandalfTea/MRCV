@@ -92,7 +92,9 @@ int main(int argv, char* argc[]) {
 			std::cout << "\t" << std::chrono::duration_cast<std::chrono::milliseconds>(stop-start).count() << " ms\n" << std::endl;
 
 			Map.update( frames.back().points, frames.back().desTrain );
-			std::cout << "MAP SIZE : " << Map.size() << std::endl;
+			std::cout << "POINTS FOUND : " << Map.mPointsFound << std::endl;
+			std::cout << "TOTAL POINTS : " << Map.size() << std::endl;
+			std::cout << "TOTAL DESC : " << Map.des.size() << std::endl;
 
 			/*
 			for(size_t i{}; i <= frames.back().kptsTrain.size(); i++) {

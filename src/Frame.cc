@@ -22,6 +22,10 @@ Frame::Frame(frame& frame1, frame& frame2, cv::Ptr<cv::ORB>& Extractor, RunOptio
 				: extractor(Extractor), id(mId++), f1(frame1), f2(frame2)
 {
 
+/*	Set time  */
+
+		this->time; 
+
 
 
 /*  Resize image into FRAME_WIDTH X FRAME_HEIGHT
@@ -29,7 +33,6 @@ Frame::Frame(frame& frame1, frame& frame2, cv::Ptr<cv::ORB>& Extractor, RunOptio
 		Change color of 'show' image back into RGB        */
 
 	try {
-		// TODO: might need to clean the img mat before assignment
 		cv::Mat resized;
 		if( id == 0 ) cv::resize(this->f1.img, resized, cv::Size(FRAME_WIDTH, FRAME_HEIGHT));
 		if( id == 0 ) cv::cvtColor(resized, this->f1.img, cv::COLOR_RGB2GRAY);
