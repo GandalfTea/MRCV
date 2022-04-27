@@ -56,12 +56,6 @@ class FrameException {
 		explicit FrameException( FrameError error) : error_(error) {}
 };
 
-class FrameAlert {
-	public:
-		FrameError error_;
-		explicit FrameAlert( FrameError error) : error_(error) {}
-};
-
 
 /* This struct holds an individual frame
  * in order to not process the same frame twice. 
@@ -92,7 +86,7 @@ class Frame {
 		void extract( frame& current );
 
 		unsigned id;
-		unsigned double time;
+		double time;
 		frame f1, f2;
 		cv::Mat show; // image that is shown in debug screen 
 		cv::Ptr<cv::ORB>& extractor; // TODO: make general extractor pointer

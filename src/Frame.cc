@@ -228,17 +228,51 @@ Frame::Frame(frame& frame1, frame& frame2, cv::Ptr<cv::ORB>& Extractor, RunOptio
 
 	cv::triangulatePoints( wat, wat, this->kptsQuery, this->kptsTrain, pts4d);
 
+
 	/*
+
 	for( size_t i = 0; i < pts4d.cols; i++) {
-		pts4d.at<float>(i, 0) /= pts4d.at<float>(i, 3);
-		pts4d.at<float>(i, 1) /= pts4d.at<float>(i, 3);
-		pts4d.at<float>(i, 2) /= pts4d.at<float>(i, 3);
-		pts4d.at<float>(i, 3) /= pts4d.at<float>(i, 3);
+
+		auto x = pts4d.at<double>(i, 0);
+		auto y = pts4d.at<double>(i, 1);
+		auto z = pts4d.at<double>(i, 2);
+		auto w = pts4d.at<double>(i, 3);
+
+		if( w != 0 ) { 
+			std::cout << x << std::endl;
+			std::cout << y << std::endl;
+			std::cout << z << std::endl;
+			std::cout << w << std::endl;
+			double r1 = x / w;
+			double r2 = y / w;
+			double r3 = z / w;
+			double r4 = w / w;
+			std::cout << r1 << std::endl;
+			std::cout << r2 << std::endl;
+			std::cout << r3 << std::endl;
+			std::cout << r4 << std::endl;
+			std::cout << std::endl << std::endl;
+			pts4d.at<double>(i, 0) = r1;
+			pts4d.at<double>(i, 1) = r2;
+			pts4d.at<double>(i, 2) = r3;
+			pts4d.at<double>(i, 3) = r4;
+		}
 	}
 	*/
 
-	pts4d = 1 * pts4d; // scaling
-	this->points = pts4d;
+	pts4d = 100 * pts4d; // scaling
+
+	// filter points behind the camera
+	cv::Mat good_pts4d = pts4d.col(0);
+	for( size_t i = 0; i < pts4d.cols; i++) {
+		if( pts4d.at<double>(i, 1) > 0) {
+			cv::Mat pt;
+			pts4d.col(i).copyTo(pt);
+			good_pts4d.push_back(pt);
+		}
+	}
+	good_pts4d = good_pts4d.reshape(good_pts4d.cols, 4);
+	this->points = good_pts4d;
 }
 
 

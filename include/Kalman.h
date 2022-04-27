@@ -77,8 +77,7 @@ Point operator*( double lhs, Point* rhs ) {
 		1. Prediction : predict the next value based on last state, input variables and noise
 		
 				x10 = F * x00 + G * u + W
-				x10 = (F*x00) + K*(y -C*x00) 
-				P10 = A(I - KC)PA.t() + W
+				P10 = FPF.t() + Q
 
 		2. Calibrate State : using the prediction and new sensor data, compute the new state
 			

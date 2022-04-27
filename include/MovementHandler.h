@@ -109,7 +109,7 @@ namespace pangolin {
 				LieMulSE3(T_nc, T_n2, T_2c);
 				rotation_changed = true;
 
-				std::cout << cam_state->GetModelViewMatrix() << std::endl;
+				//std::cout << cam_state->GetModelViewMatrix() << std::endl;
 
 			}
 

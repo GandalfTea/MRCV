@@ -3,7 +3,7 @@
 #define MRCV_MAP_H
 
 #include <Frame.h>
-#include <Kalman.h>
+//#include <Kalman.h>
 
 #define MRCV_DETAILED // hardcode for now
 
@@ -18,6 +18,13 @@ typedef unsigned char uchar;
 #endif
 
 
+struct Point {
+	cv::Point3f pt;
+	std::vector<cv::Point3f> observations;
+	cv::Mat des;
+	float c;
+};
+
 class Map {
 	public:
 		Map();
@@ -31,20 +38,22 @@ class Map {
 		void video();
 
 		// Helpers
-		bool contains( cv::Mat des );
+		std::vector<std::vector<cv::DMatch>> contains( cv::Mat des ); 
 		void add( Point a );
 		int size();
 
 		int mPointsFound = 0;
+		int mNewPoints = 0;
+		int mRepeatingPoints = 0;
 		cv::Ptr<cv::DescriptorMatcher> matcher; 
 		cv::Mat des;
+		std::vector<Point> points;
 
 	private:
 
 	#if defined MRCV_POWER_SAVING || defined MRCV_SPEEDY
 		cv::Mat points;
 	#elif defined MRCV_DETAILED
-		std::vector<Point>* points;
 		std::vector<cv::Mat> poses;
 	#endif
 };
