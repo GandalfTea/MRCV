@@ -83,10 +83,10 @@ int main(int argv, char* argc[]) {
 			}
 			f2.img = images.rbegin()[0];
 
-			frames.push_back(Frame(f1, f2, extractor, MRCV_SILENT));
+			frames.push_back(Frame(f1, f2, extractor, MRCV_DEBUG));
 			poses.push_back(frames.back().pose);
 
-			//Mat show = frames.back().show;
+			Mat show = frames.back().show;
 
 			auto stop = std::chrono::system_clock::now();
 			std::cout << "\t" << std::chrono::duration_cast<std::chrono::milliseconds>(stop-start).count() << " ms\n" << std::endl;
@@ -108,20 +108,20 @@ int main(int argv, char* argc[]) {
 					cv::Mat query = frames.back().K * queryData;
 					cv::Mat train = frames.back().K * trainData;
 
-					circle(show, Point(query.at<float>(0, 0), query.at<float>(0, 1)), 1, Scalar(0, 255, 0), 1, LINE_8);
-					 TODO: FIX MATCHES DISPLAY
-					line  (show, Point(query.at<float>(0, 0), query.at<float>(0, 1)), 
-									  	 Point(train.at<float>(0, 0), train.at<float>(0, 1)), 
+					circle(show, cv::Point(query.at<float>(0, 0), query.at<float>(0, 1)), 1, Scalar(0, 255, 0), 1, LINE_8);
+					line  (show, cv::Point(query.at<float>(0, 0), query.at<float>(0, 1)), 
+									  	 cv::Point(train.at<float>(0, 0), train.at<float>(0, 1)), 
 										   Scalar(255, 255, 255), 0.01);
 											 
 			}
+			TODO: FIX MATCHES DISPLAY
 			for( auto i : frames.back().matches) {
 					line (show, frames.back().kps1[i.queryIdx].pt, 
 											frames.back().kps2[i.trainIdx].pt,
 										  Scalar(255, 255, 255), 0.01);
 			}
-
 			*/
+
 
 			// Render Points
 			
@@ -174,6 +174,11 @@ int main(int argv, char* argc[]) {
 				cv::Rodrigues( R1toR2, R_disp );
 				cv::Mat t_disp = -R1toR2 * t1 + t2; 
 
+				x_displacement.push_back(R_disp.at<double>(0,0));
+				y_displacement.push_back(R_disp.at<double>(0,1));
+				z_displacement.push_back(R_disp.at<double>(0,2));
+
+		
 				/*
 				std::cout.precision(50);
 				std::cout << std::endl;
@@ -205,7 +210,8 @@ int main(int argv, char* argc[]) {
 			//s_cam.SetModelViewMatrix(T_vc);
 			//pangolin::OpenGlMatrix& cam = s_cam.GetModelViewMatrix();
 			//std::cout << cam << std::endl;
-			s_cam.Follow(RT, true);
+			//s_cam.Follow(RT, true);
+			
 			
 			//imshow("Frame", show);
 
